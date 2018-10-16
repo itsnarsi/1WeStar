@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2018-10-13T23:38:10-05:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-15T22:40:32-05:00
+# @Last modified time: 2018-10-16T01:29:09-05:00
 import torch
 torch.manual_seed(29)
 from torch import nn
@@ -16,31 +16,19 @@ class FACEMOD_1(nn.Module):
         self.feat_dim = 256
 
         #128x128
-        self.l1 = L.CONV2D_BLOCK(5, 1, filters = [32], stride=2, padding='same', activation='relu', use_bias=True,
-                                 dropout = dropout, batch_norm = False, dilation = 1, groups = 1, conv_type = 1,
+        self.l1 = L.CONV2D_BLOCK(5, 1, filters = [48], stride=2, padding='same', activation='relu', use_bias=True,
+                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1,
                                  scale = 1.0, pool_type = 'max', pool_size = 3, pool_padding = 'same')
 
         #32x32
-        self.l2 = L.RESNET_BLOCK(3, 32, filters = [64, 64, 64], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = 'max')
+        self.l2 = L.RESNET_BLOCK(3, 48, filters = [96, 96], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
+                                   batch_norm = True, groups = 1, dilation = 1, scale = 2.0, resnet_type = 2, pool_type = None)
 
         #16x16
-        self.l3 = L.RESNET_BLOCK(3, 64, filters = [128, 128, 128, 128], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = 'max')
+        self.l3 = L.RESNET_BLOCK(3, 96, filters = [192, 192, 128], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
+                                   batch_norm = True, groups = 1, dilation = 1, scale = 2.0, resnet_type = 2, pool_type = None)
 
-
-        #8x8
-        self.l4 = L.RESNET_BLOCK(3, 128, filters = [256, 256, 256, 256, 256, 256], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = 'max')
-
-
-        #4x4
-        self.l5 = L.RESNET_BLOCK(3, 256, filters = [512, 512, 512], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = 'max')
-
-        #2x2 : GLOBAL POOLING
-        self.l6 = nn.AvgPool2d(2, 2)
-        self.embeded_feat = L.MLP_BLOCK(512, neurons = [256], activation = 'linear', use_bias=True)
+        self.embeded_feat = L.MLP_BLOCK(64*128, neurons = [256], activation = 'linear', use_bias=True, dropout = 0.5)
         self.classify = L.MLP_BLOCK(256, neurons = [num_classes], activation = 'linear', use_bias=True)
 
     def features(self, x):
@@ -48,11 +36,11 @@ class FACEMOD_1(nn.Module):
         x = self.l1(x)
         x = self.l2(x)
         x = self.l3(x)
-        x = self.l4(x)
-        x = self.l5(x)
-        x = self.l6(x)
 
         x = L.flatten(x)
+
+        x = self.embeded_feat(x)
+
         return x
 
     def forward(self, x):

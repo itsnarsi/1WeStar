@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2018-10-13T22:34:55-05:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-15T22:57:25-05:00
+# @Last modified time: 2018-10-16T01:12:16-05:00
 import os
 import time
 import numpy as np
@@ -113,10 +113,10 @@ def fit_model(model, train_data, loss_weight = 1, batch_size = 32,
 
     # Center loss optimizer
 
-    specifyLR(model, {'classify':[10, 0]}, {'classify':[20, 0]})
+    specifyLR(model, {'classify':[10*0.01, 0]}, {'classify':[20*0.01, 0]})
 
     optimizer_center = optim.SGD(criterion_center.parameters(), lr =0.5)
-    optimizer_model = torch.optim.SGD(parfilter(model), 1.0, momentum=0.9, weight_decay=1e-4)
+    optimizer_model = torch.optim.SGD(parfilter(model), 0.01, momentum=0.9, weight_decay=0.0001)
 
     # Check and resume training
     check_point_file = weights_loc + '/checkpoint.pth.tar'

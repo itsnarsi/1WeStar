@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2018-10-15T15:05:02-05:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-15T22:57:40-05:00
+# @Last modified time: 2018-10-16T01:34:23-05:00
 import numpy as np
 
 # Pytorch
@@ -20,7 +20,7 @@ from utils.models import *
 from utils.data_loader import msceleb1m_dataset
 
 logging_dir = '/media/narsi/VizON/FALL2018/1WeStar/tflog'
-model_instance_name = 'MOBMODEL_1_E1'
+model_instance_name = 'FACEMOD_1_E1'
 
 batch_size = 32
 nb_epochs = 20
@@ -35,10 +35,10 @@ transform=transforms.Compose([
     ])
 dataset = msceleb1m_dataset(img_fldr, img_list, transform=transform)
 
-model = MOBMOD_1(dataset.num_subs, feat_dim = 256)
+model = FACEMOD_1(dataset.num_subs)
 
 model_summary([1, 128, 128], model)
-fit_model(model, dataset, loss_weight = 1.0,
+fit_model(model, dataset, loss_weight = 0.01,
           batch_size = batch_size, num_epochs = nb_epochs, init_epoch = 1,
           scheduler_setps = [1, 5, 10], log_dir = logging_dir,
           log_instance = model_instance_name, use_cuda = True, resume_train = False)
