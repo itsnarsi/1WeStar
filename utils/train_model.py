@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2018-10-13T22:34:55-05:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-16T01:12:16-05:00
+# @Last modified time: 2018-10-17T23:09:58-05:00
 import os
 import time
 import numpy as np
@@ -84,7 +84,7 @@ def train(model, train_data_loader, optimizer_model, optimizer_center, criterion
     return totalloss_meter.avg, softmax_meter.avg, center_meter.avg, acc1_meter.avg, acc5_meter.avg
 
 
-def fit_model(model, train_data, loss_weight = 1, batch_size = 32,
+def fit_model(model, train_data, loss_weight = 1, base_lr = 0.01, batch_size = 64,
               num_epochs = 100, init_epoch = 1, scheduler_setps = [10, 20, 50],
               log_dir = None, log_instance = None, use_cuda = True, resume_train = True):
 
@@ -113,10 +113,10 @@ def fit_model(model, train_data, loss_weight = 1, batch_size = 32,
 
     # Center loss optimizer
 
-    specifyLR(model, {'classify':[10*0.01, 0]}, {'classify':[20*0.01, 0]})
+    specifyLR(model, {'classify':[10*base_lr, 0]}, {'classify':[20*base_lr, 0]})
 
     optimizer_center = optim.SGD(criterion_center.parameters(), lr =0.5)
-    optimizer_model = torch.optim.SGD(parfilter(model), 0.01, momentum=0.9, weight_decay=0.0001)
+    optimizer_model = torch.optim.SGD(parfilter(model), base_lr, momentum=0.9, weight_decay=0.0001)
 
     # Check and resume training
     check_point_file = weights_loc + '/checkpoint.pth.tar'

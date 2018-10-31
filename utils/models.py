@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2018-10-13T23:38:10-05:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-16T01:29:09-05:00
+# @Last modified time: 2018-10-17T23:24:14-05:00
 import torch
 torch.manual_seed(29)
 from torch import nn
@@ -45,6 +45,51 @@ class FACEMOD_1(nn.Module):
 
     def forward(self, x):
         return self.classify(self.features(x))
+
+
+class FACEMOD_2(nn.Module):
+    def __init__(self, num_classes, dropout = 0.0):
+        super(FACEMOD_2, self).__init__()
+
+        self.num_classes = num_classes
+        self.feat_dim = 256
+
+        #128x128
+        self.l1 = L.CONV2D_BLOCK(5, 1, filters = [48], stride=2, padding='same', activation='relu', use_bias=True,
+                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1,
+                                 scale = 1.0, pool_type = 'max', pool_size = 3, pool_padding = 'same')
+
+        #32x32
+        self.l2 = L.RESNET_BLOCK(3, 48, filters = [96, 96, 96], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
+                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
+
+        #16x16
+        self.l3 = L.RESNET_BLOCK(3, 96, filters = [192, 192, 192, 192, 192], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
+                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
+
+        #8x8
+        self.l4 = L.RESNET_BLOCK(3, 192, filters = [256, 256, 256], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
+                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
+
+        self.embeded_feat = L.MLP_BLOCK(16*256, neurons = [256], activation = 'linear', use_bias=True, dropout = 0.5)
+        self.classify = L.MLP_BLOCK(256, neurons = [num_classes], activation = 'linear', use_bias=False)
+
+    def features(self, x):
+
+        x = self.l1(x)
+        x = self.l2(x)
+        x = self.l3(x)
+        x = self.l4(x)
+
+        x = L.flatten(x)
+
+        x = self.embeded_feat(x)
+
+        return x
+
+    def forward(self, x):
+        return self.classify(self.features(x))
+
 
 class MOBMOD_1(nn.Module):
     def __init__(self, num_classes, feat_dim = 256, dropout = 0.0):
