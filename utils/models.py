@@ -1,174 +1,109 @@
 # @Author: Narsi Reddy <narsi>
-# @Date:   2018-10-13T23:38:10-05:00
+# @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2018-10-17T23:24:14-05:00
+# @Last modified time: 2019-12-18T21:46:55-06:00
 import torch
 torch.manual_seed(29)
 from torch import nn
-from twrap import layers as L
 import torch.nn.functional as F
 
-class FACEMOD_1(nn.Module):
-    def __init__(self, num_classes, dropout = 0.0):
-        super(FACEMOD_1, self).__init__()
-
-        self.num_classes = num_classes
-        self.feat_dim = 256
-
-        #128x128
-        self.l1 = L.CONV2D_BLOCK(5, 1, filters = [48], stride=2, padding='same', activation='relu', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1,
-                                 scale = 1.0, pool_type = 'max', pool_size = 3, pool_padding = 'same')
-
-        #32x32
-        self.l2 = L.RESNET_BLOCK(3, 48, filters = [96, 96], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 2.0, resnet_type = 2, pool_type = None)
-
-        #16x16
-        self.l3 = L.RESNET_BLOCK(3, 96, filters = [192, 192, 128], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 2.0, resnet_type = 2, pool_type = None)
-
-        self.embeded_feat = L.MLP_BLOCK(64*128, neurons = [256], activation = 'linear', use_bias=True, dropout = 0.5)
-        self.classify = L.MLP_BLOCK(256, neurons = [num_classes], activation = 'linear', use_bias=True)
-
-    def features(self, x):
-
-        x = self.l1(x)
-        x = self.l2(x)
-        x = self.l3(x)
-
-        x = L.flatten(x)
-
-        x = self.embeded_feat(x)
-
-        return x
-
-    def forward(self, x):
-        return self.classify(self.features(x))
+def pixel_unshuffle(x, factor = 2):
+    b, c, h, w = x.size()
+    new_c = c * factor**2
+    new_h = h // factor
+    new_w = w // factor
+    x = x.contiguous().view(b, c, new_h, factor, new_w, factor)
+    x = x.permute(0,1,3,5,2,4).contiguous().view(b, new_c, new_h, new_w)
+    return x
 
 
-class FACEMOD_2(nn.Module):
-    def __init__(self, num_classes, dropout = 0.0):
-        super(FACEMOD_2, self).__init__()
+class binTanH(torch.autograd.Function):
+    @staticmethod
+    def forward(self, input):
+        self.save_for_backward(input)
+        c = input.clamp(min=-1, max =1)
+        c[c > 0.0] = 1
+        c[c < 0.0] = -1
+        return c
+    @staticmethod
+    def backward(self, grad_output):
+        input, = self.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[input < -1] = 0
+        grad_input[input > 1] = 0
+        return grad_input, None
 
-        self.num_classes = num_classes
-        self.feat_dim = 256
+class BinTANH(torch.nn.Module):
+    def __init__(self):
+        super(BinTANH, self).__init__()
+        self.quantclip = binTanH
 
-        #128x128
-        self.l1 = L.CONV2D_BLOCK(5, 1, filters = [48], stride=2, padding='same', activation='relu', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1,
-                                 scale = 1.0, pool_type = 'max', pool_size = 3, pool_padding = 'same')
+    def forward(self, input):
+        return self.quantclip.apply(input)
 
-        #32x32
-        self.l2 = L.RESNET_BLOCK(3, 48, filters = [96, 96, 96], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
+WN_ = lambda x: nn.utils.weight_norm(x)
 
-        #16x16
-        self.l3 = L.RESNET_BLOCK(3, 96, filters = [192, 192, 192, 192, 192], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
+class BLOCK_1x1ReLU3x3(nn.Module):
+    def __init__(
+        self, in_ch, out_ch, ker, act = nn.ReLU(True)
+        ):
+        super(BLOCK_1x1ReLU3x3, self).__init__()
 
-        #8x8
-        self.l4 = L.RESNET_BLOCK(3, 192, filters = [256, 256, 256], stride=2, padding='same', activation='relu', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = 1, dilation = 1, scale = 4.0, resnet_type = 2, pool_type = None)
-
-        self.embeded_feat = L.MLP_BLOCK(16*256, neurons = [256], activation = 'linear', use_bias=True, dropout = 0.5)
-        self.classify = L.MLP_BLOCK(256, neurons = [num_classes], activation = 'linear', use_bias=False)
-
-    def features(self, x):
-
-        x = self.l1(x)
-        x = self.l2(x)
-        x = self.l3(x)
-        x = self.l4(x)
-
-        x = L.flatten(x)
-
-        x = self.embeded_feat(x)
-
-        return x
+        feat = []
+        feat.append(
+            WN_(nn.Conv2d(in_ch, out_ch, 1)),
+            act,
+            nn.ReflectionPad2d(ker//2),
+            WN_(nn.Conv2d(out_ch, out_ch, ker))
+        )
+        self.feat = nn.Sequential(*feat)
 
     def forward(self, x):
-        return self.classify(self.features(x))
-
-
-class MOBMOD_1(nn.Module):
-    def __init__(self, num_classes, feat_dim = 256, dropout = 0.0):
-        super(MOBMOD_1, self).__init__()
-
-        self.num_classes = num_classes
-        self.feat_dim = feat_dim
-
-        #128x128
-        self.l1 = L.CONV2D_BLOCK(3, 1, filters = [64], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1, scale = 1.0, pool_type = None)
-
-        self.l2 = L.CONV2D_BLOCK(1, 64, filters = [24], stride=1, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = 1, conv_type = 1, scale = 1.0, pool_type = None)
-
-        #64x64
-        self.mob1 = L.RESNET_BLOCK(3, 24, filters = [24, 24, 24, 24], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = int(24*4), dilation = 1, scale = 1/4.0, resnet_type = 2, pool_type = None)
-
-        self.mob1s = L.CONV2D_BLOCK(3, 24, filters = [36], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = int(36*4), conv_type = 4, scale = 1/4.0, pool_type = None)
-
-        #32x32
-        self.mob2 = L.RESNET_BLOCK(3, 36, filters = [36, 36, 36, 36], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = int(36*4), dilation = 1, scale = 1/4.0, resnet_type = 2, pool_type = None)
-
-        self.mob2s = L.CONV2D_BLOCK(3, 36, filters = [48], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = int(48*4), conv_type = 4, scale = 1/4.0, pool_type = None)
-
-        #16x16
-        self.mob3 = L.RESNET_BLOCK(3, 48, filters = [48, 48, 48, 48], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = int(48*4), dilation = 1, scale = 1/4.0, resnet_type = 2, pool_type = None)
-
-        self.mob3s = L.CONV2D_BLOCK(3, 48, filters = [72], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = int(72*4), conv_type = 4, scale = 1/4.0, pool_type = None)
-
-        #8x8
-        self.mob4 = L.RESNET_BLOCK(3, 72, filters = [72, 72, 72, 72], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = int(72*4), dilation = 1, scale = 1/4.0, resnet_type = 2, pool_type = None)
-
-        self.mob4s = L.CONV2D_BLOCK(3, 72, filters = [72], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = int(72*4), conv_type = 4, scale = 1/4.0, pool_type = None)
-
-        #4x4
-        self.mob5 = L.RESNET_BLOCK(3, 72, filters = [72, 72, 72, 72], stride=1, padding='same', activation='relu6', use_bias=True, dropout = dropout,
-                                   batch_norm = True, groups = int(72*4), dilation = 1, scale = 1/4.0, resnet_type = 2, pool_type = None)
-
-        self.mob5s = L.CONV2D_BLOCK(3, 72, filters = [72], stride=2, padding='same', activation='relu6', use_bias=True,
-                                 dropout = dropout, batch_norm = True, dilation = 1, groups = int(72*4), conv_type = 4, scale = 1/4.0, pool_type = None)
-
-        #2x2x72
-        self.embeded_feat = L.MLP_BLOCK(int(4*72), neurons = [feat_dim], activation = 'l2norm', use_bias=True)
-        self.classify = L.MLP_BLOCK(feat_dim, neurons = [num_classes], activation = 'linear', use_bias=True)
-
-    def features(self, x):
-
-        x = self.l1(x)
-        x = self.l2(x)
-
-        x = self.mob1(x)
-        x = self.mob1s(x)
-
-        x = self.mob2(x)
-        x = self.mob2s(x)
-
-        x = self.mob3(x)
-        x = self.mob3s(x)
-
-        x = self.mob4(x)
-        x = self.mob4s(x)
-
-        x = self.mob5(x)
-        x = self.mob5s(x)
-
-        x = L.flatten(x)
-
-        x = self.embeded_feat(x)
-
+        x = torch.cat((x, self.feat(x)), dim = 1)
         return x
 
+class BLOCK_3x3(nn.Module):
+    def __init__(
+        self, in_ch, out_ch, ker
+        ):
+        super(BLOCK_3x3, self).__init__()
+
+        feat = []
+        feat.append(
+            nn.ReflectionPad2d(ker//2),
+            WN_(nn.Conv2d(out_ch, out_ch, ker))
+        )
+        self.feat = nn.Sequential(*feat)
+
     def forward(self, x):
-        return self.features(x)
+        x = self.feat(x)
+        return x
+
+
+class MODEL1(nn.Module):
+    def __init__(
+        self, feat = 48, nb_blocks = 5, shuffle = 4
+        ):
+        self.factor = shuffle
+
+        self.ps_in   = nn.PixelShuffle(1/shuffle)
+        self.en_in   = BLOCK_3x3(3 * shuffle**2, feat, ker = 3)
+        self.en_feat = nn.Sequential(BLOCK_1x1ReLU3x3(feat, feat),
+                                     *[BLOCK_1x1ReLU3x3(feat*2, feat) for i in range(nb_blocks-1)])
+        self.en_out  = BLOCK_3x3(feat*2, 8, ker = 3)
+        self.en_bin  = BinTANH()
+
+
+        self.de_in   = BLOCK_3x3(8, feat, ker = 3)
+        self.de_feat = nn.Sequential(BLOCK_1x1ReLU3x3(feat, feat),
+                                     *[BLOCK_1x1ReLU3x3(feat*2, feat) for i in range(nb_blocks-1)])
+        self.en_in   = BLOCK_3x3(feat*2, 3 * shuffle**2, ker = 3)
+
+    def forward(self, x):
+        # Encode Input
+        en_x = pixel_unshuffle(x, self.factor)
+        en_x = self.en_bin(self.en_out(self.en_feat(self.en_in(en_x))))
+        # Decode Input
+        de_x = self.de_out(self.de_feat(self.de_in(en_x)))
+        de_x = F.pixel_shuffle(de_x, self.factor)
+        return de_x

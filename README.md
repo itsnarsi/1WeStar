@@ -1,2 +1,2 @@
-# 1WeStar
-Deep Learning based bio-metrics recognition. (FACE, Visible OCULAR)
+### 1WeStar
+Image Compression techniques.
