@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T11:44:42-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   itsnarsi
-# @Last modified time: 2020-01-11T20:52:32-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-12T19:36:25-06:00
 import torch
 torch.manual_seed(29)
 from torch import nn

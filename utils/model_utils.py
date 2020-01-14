@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T11:44:07-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   itsnarsi
-# @Last modified time: 2020-01-11T19:57:28-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-12T19:44:04-06:00
 import torch
 torch.manual_seed(29)
 from torch import nn
@@ -50,3 +50,44 @@ class BinTANH(torch.nn.Module):
 
     def forward(self, input):
         return self.quantclip.apply(input)
+
+class quantclip(torch.autograd.Function):
+    """
+    We can implement our own custom autograd Functions by subclassing
+    torch.autograd.Function and implementing the forward and backward passes
+    which operate on Tensors.
+    """
+    @staticmethod
+    def forward(self, input, quant):
+        """
+        In the forward pass we receive a Tensor containing the input and return a
+        Tensor containing the output. You can cache arbitrary Tensors for use in the
+        backward pass using the save_for_backward method.
+        """
+        self.save_for_backward(input)
+        c = (input.clamp(min=-1, max =1)+1)/2.0 * quant
+        c = 2 * (c.round()/quant) - 1
+        return c
+    @staticmethod
+    def backward(self, grad_output):
+        """
+        In the backward pass we receive a Tensor containing the gradient of the loss
+        with respect to the output, and we need to compute the gradient of the loss
+        with respect to the input.
+        """
+        input, = self.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[input < -1] = 0
+        grad_input[input > 1] = 0
+        return grad_input, None
+
+class QuantCLIP(torch.nn.Module):
+
+    def __init__(self, num_bits, dtype = torch.cuda.FloatTensor):
+        super(QuantCLIP, self).__init__()
+
+        self.quant = 2 ** num_bits - 1
+        self.quantclip = quantclip
+
+    def forward(self, input):
+        return self.quantclip.apply(input, self.quant)

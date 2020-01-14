@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
-# @Last modified by:   itsnarsi
-# @Last modified time: 2020-01-11T21:25:04-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-13T15:52:07-06:00
 import os
 import time
 import numpy as np
@@ -17,12 +17,13 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision.utils as vutils
 
 from .trainer_utils import AverageMeter, save_checkpoint
-from .metrics import mssim_metric, psnr_metric
+from .metrics import psnr_metric
 
 import pyprind
 
 
-def train(model, train_data_loader, optimizer_model,
+def train(model, train_data_loader,
+          optimizer_model, optimizer_step,
           criterion,
           use_cuda, epoch):
 
@@ -50,6 +51,7 @@ def train(model, train_data_loader, optimizer_model,
         total_loss.backward()
 
         optimizer_model.step()
+        if optimizer_step is not None: optimizer_step.step()
 
         toc = time.time() - tic
         tic = time.time()
@@ -61,7 +63,7 @@ def train(model, train_data_loader, optimizer_model,
         psnr_meter.update(psnr_.data.cpu().item(), batch_data.shape[0])
         # Update log progress bar
         log_ = ' loss:'+ '{0:4.4f}'.format(totalloss_meter.avg)
-        log_ += ' loss:'+ '{0:4.4f}'.format(psnr_meter.avg)
+        log_ += ' psnr:'+ '{0:4.4f}'.format(psnr_meter.avg)
         log_ += ' batch time:'+ '{0:2.3f}'.format(toc)
         bar.update(item_id = log_)
 
@@ -70,11 +72,18 @@ def train(model, train_data_loader, optimizer_model,
     return totalloss_meter.avg, psnr_meter.avg
 
 
-def fit_model(model, train_data_loader, optimizer_model,
+def fit_model(model, train_data_loader,
+              optimizer_model, optimizer_step,
               criterion,
               num_epochs = 100, init_epoch = 1,
               log_dir = None, log_instance = None,
               use_cuda = True, resume_train = True):
+
+    # Tensorboard Logger
+    if log_dir is not None:
+        if log_instance is not None:
+            train_logger = SummaryWriter(log_dir+'/'+log_instance+'_train')
+
 
     # Best results save model
     best_loss = float('inf')
@@ -90,9 +99,15 @@ def fit_model(model, train_data_loader, optimizer_model,
 
     for epoch in range(init_epoch, num_epochs+1):
 
-        totalloss, psnr_ = train(model, train_data_loader, optimizer_model,
-                          criterion,
-                          use_cuda, epoch)#, L1E, KLD , ACC1, ACC2, CCE
+        totalloss, psnr_ = train(model, train_data_loader,
+                                 optimizer_model, optimizer_step,
+                                 criterion,
+                                 use_cuda, epoch)
+
+
+        train_logger.add_scalar('loss', totalloss, epoch)
+        train_logger.add_scalar('psnr', psnr_, epoch)
+
 
         if totalloss <= best_loss:
             is_best = True
