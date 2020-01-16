@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-13T15:52:07-06:00
+# @Last modified time: 2020-01-15T23:03:55-06:00
 import os
 import time
 import numpy as np
@@ -95,6 +95,7 @@ def fit_model(model, train_data_loader,
     # Initializing cuda
     device = torch.device("cuda" if use_cuda else "cpu")
     if use_cuda:
+        criterion.to(device)
         model.to(device)
 
     for epoch in range(init_epoch, num_epochs+1):
