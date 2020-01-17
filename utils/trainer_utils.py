@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T12:57:14-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   itsnarsi
-# @Last modified time: 2020-01-11T13:56:40-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-16T21:02:32-06:00
 
 import os
 import torch
@@ -34,3 +34,29 @@ def save_checkpoint(state, is_best, storage_loc = ''):
 
 def parfilter(model):
     return filter(lambda p: p.requires_grad, model.parameters())
+
+def non_trainable_model(model):
+    for param in model.parameters():
+        param.requires_grad = False
+# Trainable Model
+def trainable_model(model):
+    for param in model.parameters():
+        param.requires_grad = True
+# Block Specific layer non-trainable
+def non_trainable_layer(layers):
+    if type(layers) is list:
+        for layer in layers:
+            for param in layer.parameters():
+                param.requires_grad = False
+    else:
+        for param in layers.parameters():
+            param.requires_grad = False
+# Block Specific layer trainable
+def trainable_layer(layers):
+    if type(layers) is list:
+        for layer in layers:
+            for param in layer.parameters():
+                param.requires_grad = True
+    else:
+        for param in layers.parameters():
+            param.requires_grad = True

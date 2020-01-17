@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-15T23:03:55-06:00
+# @Last modified time: 2020-01-16T21:11:36-06:00
 import os
 import time
 import numpy as np
@@ -91,6 +91,7 @@ def fit_model(model, train_data_loader,
     weights_loc = log_dir+'/weights/'+log_instance
     if not os.path.exists(weights_loc):
         os.makedirs(weights_loc)
+
 
     # Initializing cuda
     device = torch.device("cuda" if use_cuda else "cpu")

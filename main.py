@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-16T07:50:33-06:00
+# @Last modified time: 2020-01-17T13:16:37-06:00
 import numpy as np
 
 import torch
@@ -16,9 +16,8 @@ from torch.utils.data import DataLoader
 
 from torchstat import stat
 from utils import  models
-from utils.trainer import fit_model
 from utils.data import dataset_1
-from utils.trainer_utils import parfilter
+from utils.trainer_utils import *
 from utils.metrics import *
 
 from PIL import ImageFile
@@ -26,7 +25,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 batch_size = 16
-base_lr = 1e-4
+base_lr = 5e-4
 max_lr = 1e-3
 
 train_src = ['/media/narsi/fast_drive/super_resolution/train/dvi2k',
@@ -39,7 +38,15 @@ train_dl = DataLoader(train_dl, batch_size=batch_size, shuffle=True, num_workers
 # test_dl = dataset_1(test_src)
 # test_dl = DataLoader(test_dl, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
-model = models.QuantACTShuffleV3()
+from utils.trainer import fit_model
+encode_model = models.QuantACTShuffleV3()
+# Check and resume training
+check_point_file = "/media/narsi/LargeData/SP_2020/compressACT/weights/QuantACTShuffleV3_exp02/model_best.pth.tar"
+checkpoint = torch.load(check_point_file)
+encode_model.load_state_dict(checkpoint['state_dict'])
+model = models.CleanImg(encode_model)
+non_trainable_layer(model.M)
+
 # stat(model, (3, 32, 32))
 # exit()
 
@@ -48,8 +55,8 @@ optimizer_step = None
 #torch.optim.lr_scheduler.MultiStepLR(optimizer, [len(train_dl)//2], gamma=0.1)
 
 # from torch_lr_finder import LRFinder
-# loss = ContentLoss()#ContentLoss()
-# # loss = loss.cuda()
+# loss = MSSSIM()#ContentLoss()
+# loss = loss.cuda()
 # lr_finder = LRFinder(model, optimizer, loss, device="cuda")
 # train_dl.dataset.two_out = True
 # lr_finder.range_test(train_dl, end_lr=100, num_iter=500)
@@ -59,8 +66,8 @@ optimizer_step = None
 fit_model(model,
           train_dl,
           optimizer, optimizer_step,
-          ContentLoss(),
-          num_epochs = 50, init_epoch = 11,
+          MSSSIM(),
+          num_epochs = 50, init_epoch = 1,
           log_dir = '/media/narsi/LargeData/SP_2020/compressACT',
-          log_instance = 'QuantACTShuffleV3_exp02',
-          use_cuda = True, resume_train = True)
+          log_instance = 'CleanImg_exp01',
+          use_cuda = True, resume_train = False)
