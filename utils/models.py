@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T13:52:30-06:00
+# @Last modified time: 2020-01-17T15:09:56-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -241,14 +241,10 @@ class QuantACTShuffleV4(nn.Module):
             RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
             RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
             RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
-            nn.PixelShuffle(2),
-            nn.Conv2d(24, 48, 1),
-            RES_3x3_BLOCK1(in_ch = 48, out_ch = 48, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 48, out_ch = 48, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 48, out_ch = 48, ker = 3, squeeze = 2, res_scale = 1.0),
-            nn.Conv2d(48, 12, 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
+            nn.Conv2d(96, 48, 1),
             nn.ReLU(inplace=True),
-            nn.PixelShuffle(2)
+            nn.PixelShuffle(4)
             )
 
     def encode(self, x):
