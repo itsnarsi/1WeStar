@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-17T20:57:03-06:00
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-14T22:03:53-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-01-16T13:02:23-06:00
 import os
 from glob import glob
 from PIL import Image
@@ -9,15 +9,15 @@ from tqdm import tqdm
 from sklearn.feature_extraction.image import extract_patches_2d
 import numpy as np
 
-src_fldr = '/media/narsi/LargeData/DATASETS/superrez/clic_2019/mobile_train/train'
-dst_fldr = '/media/narsi/fast_drive/super_resolution/train/clic_mobile'
+src_fldr = '/media/cibitaw1/DATA/super_rez/train'
+dst_fldr = '/media/cibitaw1/datasets/superrez/train/mobile'
 
 if not os.path.exists(dst_fldr): os.makedirs(dst_fldr)
 
 imgs = glob(src_fldr + os.sep + '*.png')
 
 
-for i in tqdm(range(386, len(imgs))):
+for i in tqdm(range(len(imgs))):
 
     I = Image.open(imgs[i])
     h, w = I.size
