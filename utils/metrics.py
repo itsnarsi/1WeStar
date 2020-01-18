@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T13:21:22-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T10:48:40-06:00
+# @Last modified time: 2020-01-17T20:39:38-06:00
 
 import torch
 from torch import nn
@@ -38,7 +38,7 @@ class MSSSIM(nn.Module):
 
 
     def forward(self, T, P):
-        return torch.mean(torch.pow((T - P), 2)) + 0.01 * (1 - self.ssim(T , P ))
+        return torch.mean(torch.pow((T - P), 2)) + 0.1 * (1 - self.ssim(T , P ))
 
 
 from torchvision import models as TM

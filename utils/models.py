@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T15:09:56-06:00
+# @Last modified time: 2020-01-17T20:32:23-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -288,4 +288,53 @@ class CleanImg(nn.Module):
     def forward(self, x):
         x = self.M(x)
         x = self.E(x) + x
+        return x
+
+
+
+class QuantACTShuffleV5(nn.Module):
+    def __init__(
+        self,
+        ):
+        super(QuantACTShuffleV5, self).__init__()
+
+        self.E = nn.Sequential(
+            PixelUnshuffle(4),
+            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
+            nn.Conv2d(96, 3, 1),
+            QuantCLIP(8)
+            )
+
+        self.D = nn.Sequential(
+            nn.Conv2d(3, 96, 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(96, 48, 1),
+            nn.PixelShuffle(4),
+            nn.ReLU(),
+            )
+
+        self.CLEAN = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 24, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 24, out_ch = 24, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 24, out_ch = 24, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(24, 3, 1),
+            )
+
+    def encode(self, x):
+        x = self.E(x)
+        return x
+
+    def decode(self, x):
+        x = self.D(x)
+        return x
+
+    def forward(self, x):
+        x = self.encode(x)
+        x = self.decode(x)
+        x = self.CLEAN(x) + x
         return x

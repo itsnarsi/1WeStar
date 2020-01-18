@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T13:16:37-06:00
+# @Last modified time: 2020-01-17T20:37:01-06:00
 import numpy as np
 
 import torch
@@ -39,13 +39,13 @@ train_dl = DataLoader(train_dl, batch_size=batch_size, shuffle=True, num_workers
 # test_dl = DataLoader(test_dl, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
 from utils.trainer import fit_model
-encode_model = models.QuantACTShuffleV3()
-# Check and resume training
-check_point_file = "/media/narsi/LargeData/SP_2020/compressACT/weights/QuantACTShuffleV3_exp02/model_best.pth.tar"
-checkpoint = torch.load(check_point_file)
-encode_model.load_state_dict(checkpoint['state_dict'])
-model = models.CleanImg(encode_model)
-non_trainable_layer(model.M)
+# encode_model = models.QuantACTShuffleV3()
+# # Check and resume training
+# check_point_file = "/media/narsi/LargeData/SP_2020/compressACT/weights/QuantACTShuffleV3_exp02/model_best.pth.tar"
+# checkpoint = torch.load(check_point_file)
+# encode_model.load_state_dict(checkpoint['state_dict'])
+model = models.QuantACTShuffleV5()
+# non_trainable_layer(model.M)
 
 # stat(model, (3, 32, 32))
 # exit()
@@ -69,5 +69,5 @@ fit_model(model,
           MSSSIM(),
           num_epochs = 50, init_epoch = 1,
           log_dir = '/media/narsi/LargeData/SP_2020/compressACT',
-          log_instance = 'CleanImg_exp01',
+          log_instance = 'QuantACTShuffleV5_exp01',
           use_cuda = True, resume_train = False)
