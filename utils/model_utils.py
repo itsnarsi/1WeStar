@@ -2,12 +2,12 @@
 # @Date:   2020-01-11T11:44:07-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-12T19:44:04-06:00
+# @Last modified time: 2020-01-18T13:00:29-06:00
 import torch
 torch.manual_seed(29)
 from torch import nn
 import torch.nn.functional as F
-
+import numpy as np
 
 def pixel_unshuffle(x, factor = 2):
     b, c, h, w = x.size()
@@ -91,3 +91,44 @@ class QuantCLIP(torch.nn.Module):
 
     def forward(self, input):
         return self.quantclip.apply(input, self.quant)
+
+def getHAARFilters(num_filters):
+    LL = np.asarray([[0.5, 0.5], [0.5, 0.5]])
+    LH = np.asarray([[-0.5, -0.5], [0.5, 0.5]])
+    HL = np.asarray([[-0.5, 0.5], [-0.5, 0.5]])
+    HH = np.asarray([[0.5, -0.5], [-0.5, 0.5]])
+
+    DWT = np.concatenate((LL[np.newaxis, ...],
+                          LH[np.newaxis, ...],
+                          HL[np.newaxis, ...],
+                          HH[np.newaxis, ...]))[:, np.newaxis, ...]
+    DWT = np.float32(DWT)
+    DWT = torch.from_numpy(DWT)
+
+    return DWT.repeat(num_filters, 1, 1, 1)
+
+class HaarDWT(torch.nn.Module):
+    def __init__(self, in_ch = 1):
+        super(HaarDWT, self).__init__()
+
+        weights = getHAARFilters(in_ch)
+
+        self.conv = nn.Conv2d(in_ch, in_ch * 4, 2, stride=2, bias=False, groups = in_ch)
+        self.conv.weight.data = weights
+        self.conv.weight.requires_grad = False
+
+    def forward(self, input):
+        return self.conv(input)
+
+class HaarIDWT(torch.nn.Module):
+    def __init__(self, out_ch = 1):
+        super(HaarIDWT, self).__init__()
+
+        weights = getHAARFilters(out_ch)
+
+        self.conv = nn.ConvTranspose2d(out_ch * 4, out_ch, 2, stride=2, bias=False, groups = out_ch)
+        self.conv.weight.data = weights
+        self.conv.weight.requires_grad = False
+
+    def forward(self, input):
+        return self.conv(input)
