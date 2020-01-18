@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
-# @Last modified by:   cibitaw1
-# @Last modified time: 2020-01-18T09:49:36-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-18T11:21:12-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -337,4 +337,49 @@ class QuantACTShuffleV5(nn.Module):
     def forward(self, x):
         x = self.encode(x)
         x = self.decode(x)
+        return x
+
+
+
+class QuantACTShuffleV6(nn.Module):
+    def __init__(
+        self,
+        ):
+        super(QuantACTShuffleV6, self).__init__()
+
+        self.E = nn.Sequential(
+            PixelUnshuffle(4),
+            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
+            nn.Conv2d(96, 3, 1),
+            QuantCLIP(8)
+            )
+
+        self.D = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
+            nn.PixelShuffle(4),
+            BLOCK_3x3(in_ch = 12, out_ch = 24, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 24, out_ch = 24, ker = 3, squeeze = 2, res_scale = 1.0),
+            BLOCK_3x3(in_ch = 24, out_ch = 3, ker = 3, stride = 1),
+            QuantCLIP(8)
+            )
+
+    def encode(self, x):
+        x = self.E(x)
+        return x
+
+    def decode(self, x):
+        x = self.D(x)
+        return x
+
+    def forward(self, x):
+        x = x * 2.0 - 1.0
+        x = self.encode(x)
+        x = self.decode(x)
+        x = (x + 1.0)/2.0
         return x

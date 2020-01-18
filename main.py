@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T20:37:01-06:00
+# @Last modified time: 2020-01-18T11:20:36-06:00
 import numpy as np
 
 import torch
@@ -44,7 +44,7 @@ from utils.trainer import fit_model
 # check_point_file = "/media/narsi/LargeData/SP_2020/compressACT/weights/QuantACTShuffleV3_exp02/model_best.pth.tar"
 # checkpoint = torch.load(check_point_file)
 # encode_model.load_state_dict(checkpoint['state_dict'])
-model = models.QuantACTShuffleV5()
+model = models.QuantACTShuffleV6()
 # non_trainable_layer(model.M)
 
 # stat(model, (3, 32, 32))
@@ -67,7 +67,7 @@ fit_model(model,
           train_dl,
           optimizer, optimizer_step,
           MSSSIM(),
-          num_epochs = 50, init_epoch = 1,
+          num_epochs = 15, init_epoch = 1,
           log_dir = '/media/narsi/LargeData/SP_2020/compressACT',
-          log_instance = 'QuantACTShuffleV5_exp01',
+          log_instance = 'QuantACTShuffleV6_exp01',
           use_cuda = True, resume_train = False)
