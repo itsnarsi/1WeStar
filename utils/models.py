@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-18T13:26:32-06:00
+# @Last modified time: 2020-01-18T20:10:44-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -299,7 +299,7 @@ class QuantACTShuffleV5(nn.Module):
         super(QuantACTShuffleV5, self).__init__()
 
         self.E = nn.Sequential(
-            PixelUnshuffle(4),
+            HaarDWT(3),HaarDWT(12),
             BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
             RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
             RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 4, res_scale = 1.0),
@@ -312,17 +312,10 @@ class QuantACTShuffleV5(nn.Module):
             BLOCK_3x3(in_ch = 3, out_ch = 128, ker = 3, stride = 1),
             RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
             RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
-            # nn.UpsamplingBilinear2d(scale_factor=2),
-            # nn.PixelShuffle(2),
-            # BLOCK_3x3(in_ch = 32, out_ch = 64, ker = 3, stride = 1),
             RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
             RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
-            # nn.UpsamplingBilinear2d(scale_factor=2),
-            nn.PixelShuffle(4),
-            BLOCK_3x3(in_ch = 8, out_ch = 32, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 32, out_ch = 32, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 32, out_ch = 32, ker = 3, squeeze = 2, res_scale = 1.0),
-            nn.Conv2d(32, 3, 1),
+            nn.Conv2d(128, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
             nn.ReLU(),
             )
 
@@ -340,51 +333,6 @@ class QuantACTShuffleV5(nn.Module):
         return x
 
 
-
-class QuantACTShuffleV6(nn.Module):
-    def __init__(
-        self,
-        ):
-        super(QuantACTShuffleV6, self).__init__()
-
-        self.E = nn.Sequential(
-            PixelUnshuffle(4),
-            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
-            nn.Conv2d(96, 3, 1),
-            QuantCLIP(8)
-            )
-
-        self.D = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            nn.PixelShuffle(4),
-            BLOCK_3x3(in_ch = 12, out_ch = 24, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 24, out_ch = 24, ker = 3, squeeze = 2, res_scale = 1.0),
-            BLOCK_3x3(in_ch = 24, out_ch = 3, ker = 3, stride = 1),
-            QuantCLIP(8)
-            )
-
-    def encode(self, x):
-        x = self.E(x)
-        return x
-
-    def decode(self, x):
-        x = self.D(x)
-        return x
-
-    def forward(self, x):
-        x = x * 2.0 - 1.0
-        x = self.encode(x)
-        x = self.decode(x)
-        x = (x + 1.0)/2.0
-        return x
-
-
 class QuantACTShuffleV7(nn.Module):
     def __init__(
         self,
@@ -393,22 +341,25 @@ class QuantACTShuffleV7(nn.Module):
 
         self.E = nn.Sequential(
             HaarDWT(3),HaarDWT(12),
-            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 3, res_scale = 1.0),
-            nn.Conv2d(96, 3, 1),
+            BLOCK_3x3(in_ch = 48, out_ch = 128, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(128, 3, 1),
             QuantCLIP(8)
             )
 
         self.D = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 8, res_scale = 1.0),
-            HaarIDWT(48),HaarIDWT(12),
-            BLOCK_3x3(in_ch = 12, out_ch = 3, ker = 3, stride = 1),
-            QuantCLIP(8)
+            BLOCK_3x3(in_ch = 3, out_ch = 128, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            HaarIDWT(32),HaarIDWT(8),
+            BLOCK_3x3(in_ch = 8, out_ch = 32, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 32, out_ch = 32, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 32, out_ch = 32, ker = 3, squeeze = 2, res_scale = 1.0),
+            BLOCK_3x3(in_ch = 32, out_ch = 3, ker = 3, stride = 1),
+            nn.ReLU(inplace=True)
             )
 
     def encode(self, x):
@@ -420,8 +371,6 @@ class QuantACTShuffleV7(nn.Module):
         return x
 
     def forward(self, x):
-        x = x * 2.0 - 1.0
         x = self.encode(x)
         x = self.decode(x)
-        x = (x + 1.0)/2.0
         return x
