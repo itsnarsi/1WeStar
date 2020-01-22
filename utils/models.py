@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-22T17:48:27-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-01-22T17:52:18-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -341,18 +341,18 @@ class QuantACTShuffleV6(nn.Module):
         self.E = nn.Sequential(
             HaarDWT(3),HaarDWT(12),
             BLOCK_3x3(in_ch = 48, out_ch = 128, ker = 3, stride = 1),
-            RES_3x3_BLOCK2(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK2(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
             nn.Conv2d(128, 3, 1),
             QuantCLIP(8)
             )
 
         self.D = nn.Sequential(
             BLOCK_3x3(in_ch = 3, out_ch = 256, ker = 3, stride = 1),
-            RES_3x3_BLOCK2(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK2(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK2(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK2(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
             nn.Conv2d(256, 48, 1),
             HaarIDWT(12),HaarIDWT(3),
             nn.ReLU(),
