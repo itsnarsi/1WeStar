@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:15:32-06:00
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T20:37:55-06:00
+# @Last modified time: 2020-01-22T17:49:21-06:00
 import os
 from PIL import Image
 import torch
@@ -20,7 +20,7 @@ from .data_utils import RandomResize
 transform_v1=transforms.Compose([
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
-    RandomResize(0.25, 1.0, Image.BICUBIC),
+    RandomResize(0.25, 2.0, Image.BICUBIC),
     transforms.RandomCrop((64, 64)),
     transforms.ToTensor()
     ])

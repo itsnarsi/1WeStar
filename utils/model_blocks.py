@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T11:44:42-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-01-17T20:23:22-06:00
+# @Last modified time: 2020-01-22T17:47:44-06:00
 import torch
 torch.manual_seed(29)
 from torch import nn
@@ -46,31 +46,6 @@ class RES_3x3_BLOCK1(nn.Module):
         self.feat = nn.Sequential(
             nn.BatchNorm2d(in_ch),
             nn.ReLU(inplace=True),
-            BLOCK_3x3(in_ch, out_ch//squeeze, ker),
-            nn.BatchNorm2d(out_ch//squeeze),
-            nn.ReLU(inplace=True),
-            BLOCK_3x3(out_ch//squeeze, out_ch, ker),
-            )
-
-    def forward(self, x):
-        out = self.feat(x)
-        if self.skip: out = self.rs * out + x
-        return out
-
-
-class RES_3x3_BLOCK2(nn.Module):
-    """
-        Residual Block:
-            [INPUT] -> 2*[CONV 3x3] -> [OUTPUT] + [INPUT]
-    """
-    def __init__(
-        self, in_ch, out_ch, ker, squeeze = 2, res_scale = 1.0
-        ):
-        super(RES_3x3_BLOCK2, self).__init__()
-
-        self.skip = in_ch == out_ch
-        self.rs = res_scale
-        self.feat = nn.Sequential(
             BLOCK_3x3(in_ch, out_ch//squeeze, ker),
             nn.BatchNorm2d(out_ch//squeeze),
             nn.ReLU(inplace=True),

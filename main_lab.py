@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   cibitaw1
-# @Last modified time: 2020-01-18T20:12:09-06:00
+# @Last modified by:   narsi
+# @Last modified time: 2020-01-22T17:49:25-06:00
 import numpy as np
 
 import torch
@@ -38,7 +38,7 @@ train_dl = DataLoader(train_dl, batch_size=batch_size, shuffle=True, num_workers
 # test_dl = DataLoader(test_dl, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
 from utils.trainer import fit_model
-model = models.QuantACTShuffleV5()
+model = models.QuantACTShuffleV6()
 # stat(model, (3, 32, 32))
 # exit()
 
@@ -61,5 +61,5 @@ fit_model(model,
           MSSSIM(),
           num_epochs = 25, init_epoch = 1,
           log_dir = '/media/cibitaw1/DATA/SP2020/compressACT',
-          log_instance = 'QuantACTShuffleV5_exp01',
+          log_instance = 'QuantACTShuffleV6_exp01',
           use_cuda = True, resume_train = False)
