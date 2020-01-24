@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T13:21:22-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-18T11:20:41-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-01-23T10:15:39-06:00
 
 import torch
 from torch import nn
@@ -81,4 +81,4 @@ class ContentLoss(nn.Module):
         # T = normalize_batch(T)
         # P = normalize_batch(P)
         content_loss = torch.mean((self.feat(T) - self.feat(P)) ** 2)
-        return pixel_loss + 0.1 * content_loss
+        return pixel_loss + 0.005 * content_loss

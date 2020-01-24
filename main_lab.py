@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-22T17:49:25-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-01-23T14:50:39-06:00
 import numpy as np
 
 import torch
@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from torchstat import stat
 from utils import  models
-from utils.data import dataset_1
+from utils.data import dataset_1, dataset_2
 from utils.trainer_utils import *
 from utils.metrics import *
 
@@ -29,8 +29,10 @@ base_lr = 5e-4
 max_lr = 1e-3
 
 train_src = ['/media/cibitaw1/datasets/superrez/train/mobile',
-             '/media/cibitaw1/datasets/superrez/train/prof']
-train_dl = dataset_1(train_src)
+             '/media/cibitaw1/datasets/superrez/train/prof',
+             '/media/cibitaw1/datasets/superrez/train/dtd']
+# train_dl = dataset_1(train_src)
+train_dl = dataset_2(train_src, convert = "YCbCr")
 train_dl = DataLoader(train_dl, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
 # test_src = '/media/narsi/fast_drive/super_resolution/fliker1k/val'
@@ -47,7 +49,7 @@ optimizer_step = None
 #torch.optim.lr_scheduler.MultiStepLR(optimizer, [len(train_dl)//2], gamma=0.1)
 
 # from torch_lr_finder import LRFinder
-# loss = MSSSIM()#ContentLoss()
+# loss = ContentLoss()#ContentLoss()
 # loss = loss.cuda()
 # lr_finder = LRFinder(model, optimizer, loss, device="cuda")
 # train_dl.dataset.two_out = True
@@ -58,8 +60,8 @@ optimizer_step = None
 fit_model(model,
           train_dl,
           optimizer, optimizer_step,
-          MSSSIM(),
+          ContentLoss(),
           num_epochs = 25, init_epoch = 1,
           log_dir = '/media/cibitaw1/DATA/SP2020/compressACT',
-          log_instance = 'QuantACTShuffleV6_exp01',
+          log_instance = 'QuantACTShuffleV6_exp01_YCbCr',
           use_cuda = True, resume_train = False)
