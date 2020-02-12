@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-11T20:58:38-06:00
+# @Last modified time: 2020-02-11T22:37:00-06:00
 import os
 import time
 import numpy as np
@@ -48,7 +48,7 @@ def train(model, train_data_loader,
         hloss = HLoss(encoded)
 
         # Calculate loss
-        total_loss = criterion(batch_data, predictions) + 1e-5 * hloss
+        total_loss = criterion(batch_data, predictions) + 2.5e-3 * hloss
         #, L1E, KLD, CCE, ACC1, ACC2
 
         total_loss.backward()

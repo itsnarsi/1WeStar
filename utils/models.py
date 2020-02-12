@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-11T21:29:54-06:00
+# @Last modified time: 2020-02-11T22:36:16-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -416,10 +416,13 @@ class QuantACTShuffleV7(nn.Module):
 
     def decode(self, x):
         x = self.D(x)
-        x = self.S(x)
+        # x = self.S(x)
         return x
 
     def forward(self, x):
         xe = self.encode(x)
         x = self.decode(xe)
-        return x, xe
+        if self.training:
+            return x, xe
+        else:
+            return x
