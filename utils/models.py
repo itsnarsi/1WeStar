@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-01-22T17:52:18-06:00
+# @Last modified time: 2020-02-11T21:29:54-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -319,12 +319,16 @@ class QuantACTShuffleV5(nn.Module):
             nn.ReLU(),
             )
 
+        self.S = nn.Sequential(nn.ReflectionPad2d(1),
+                               nn.AvgPool2d(3, stride=1, padding=0))
+
     def encode(self, x):
         x = self.E(x)
         return x
 
     def decode(self, x):
         x = self.D(x)
+        x = self.S(x)
         return x
 
     def forward(self, x):
@@ -358,15 +362,64 @@ class QuantACTShuffleV6(nn.Module):
             nn.ReLU(),
             )
 
+        self.S = nn.Sequential(nn.ReflectionPad2d(1),
+                               nn.AvgPool2d(3, stride=1, padding=0))
+
     def encode(self, x):
         x = self.E(x)
         return x
 
     def decode(self, x):
         x = self.D(x)
+        x = self.S(x)
         return x
 
     def forward(self, x):
         x = self.encode(x)
         x = self.decode(x)
         return x
+
+
+
+class QuantACTShuffleV7(nn.Module):
+    def __init__(
+        self,
+        ):
+        super(QuantACTShuffleV7, self).__init__()
+
+        self.E = nn.Sequential(
+            HaarDWT(3),HaarDWT(12),
+            BLOCK_3x3(in_ch = 48, out_ch = 128, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(128, 3, 1),
+            QuantCLIP(8)
+            )
+
+        self.D = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 256, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(256, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
+            nn.ReLU(),
+            )
+
+        self.S = nn.Sequential(nn.ReflectionPad2d(1),
+                               nn.AvgPool2d(3, stride=1, padding=0))
+
+    def encode(self, x):
+        x = self.E(x)
+        return x
+
+    def decode(self, x):
+        x = self.D(x)
+        x = self.S(x)
+        return x
+
+    def forward(self, x):
+        xe = self.encode(x)
+        x = self.decode(xe)
+        return x, xe

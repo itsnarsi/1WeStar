@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-16T21:11:36-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-02-11T20:58:38-06:00
 import os
 import time
 import numpy as np
@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision.utils as vutils
 
 from .trainer_utils import AverageMeter, save_checkpoint
-from .metrics import psnr_metric
+from .metrics import psnr_metric, HLoss
 
 import pyprind
 
@@ -29,6 +29,7 @@ def train(model, train_data_loader,
 
     totalloss_meter = AverageMeter()
     psnr_meter = AverageMeter()
+    hloss_meter = AverageMeter()
 
     # switch to train mode
     model.train()
@@ -42,10 +43,12 @@ def train(model, train_data_loader,
         # Compute gradient and do optimizer step
         optimizer_model.zero_grad()
         # Compute output
-        predictions = model(batch_data)
+        predictions, encoded = model(batch_data)
+
+        hloss = HLoss(encoded)
 
         # Calculate loss
-        total_loss = criterion(batch_data, predictions)#, target_var
+        total_loss = criterion(batch_data, predictions) + 1e-5 * hloss
         #, L1E, KLD, CCE, ACC1, ACC2
 
         total_loss.backward()
@@ -61,9 +64,11 @@ def train(model, train_data_loader,
         # Metrics
         totalloss_meter.update(total_loss.data.cpu().item(), batch_data.shape[0])
         psnr_meter.update(psnr_.data.cpu().item(), batch_data.shape[0])
+        hloss_meter.update(hloss.data.cpu().item(), batch_data.shape[0])
         # Update log progress bar
         log_ = ' loss:'+ '{0:4.4f}'.format(totalloss_meter.avg)
         log_ += ' psnr:'+ '{0:4.4f}'.format(psnr_meter.avg)
+        log_ += ' hloss:'+ '{0:4.4f}'.format(hloss_meter.avg)
         log_ += ' batch time:'+ '{0:2.3f}'.format(toc)
         bar.update(item_id = log_)
 

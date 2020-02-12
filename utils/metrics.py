@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T13:21:22-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-01-23T10:15:39-06:00
+# @Last modified time: 2020-02-11T18:56:06-06:00
 
 import torch
 from torch import nn
@@ -40,6 +40,10 @@ class MSSSIM(nn.Module):
     def forward(self, T, P):
         return torch.mean(torch.pow((T - P), 2)) + 0.01 * (1 - self.ssim(T , P ))
 
+def HLoss(x):
+    b = F.softmax(x, dim=1) * F.log_softmax(x, dim=1)
+    b = -1.0 * b.sum()
+    return b
 
 from torchvision import models as TM
 

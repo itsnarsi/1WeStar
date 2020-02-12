@@ -1,8 +1,8 @@
 # @Author: Narsi Reddy <itsnarsi>
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   narsi
-# @Last modified time: 2020-01-18T13:26:07-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-01-23T20:24:30-06:00
 import numpy as np
 
 import torch
@@ -69,5 +69,5 @@ fit_model(model,
           MSSSIM(),
           num_epochs = 15, init_epoch = 1,
           log_dir = '/media/narsi/LargeData/SP_2020/compressACT',
-          log_instance = 'QuantACTShuffleV7_exp01',
+          log_instance = 'QuantACTShuffleV7_exp02',
           use_cuda = True, resume_train = False)
