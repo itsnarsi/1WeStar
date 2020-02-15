@@ -2,7 +2,7 @@
 # @Date:   2020-01-11T12:27:25-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-11T18:53:55-06:00
+# @Last modified time: 2020-02-14T14:48:09-06:00
 import numpy as np
 
 import torch
@@ -29,8 +29,7 @@ base_lr = 5e-4
 max_lr = 1e-3
 
 train_src = ['/media/cibitaw1/datasets/superrez/train/mobile',
-             '/media/cibitaw1/datasets/superrez/train/prof',
-             '/media/cibitaw1/datasets/superrez/train/dtd']
+             '/media/cibitaw1/datasets/superrez/train/prof']
 train_dl = dataset_1(train_src)
 # train_dl = dataset_2(train_src, convert = "YCbCr")
 train_dl = DataLoader(train_dl, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)

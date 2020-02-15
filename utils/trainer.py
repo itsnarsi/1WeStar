@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:17:50-06:00
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-11T23:04:55-06:00
+# @Last modified time: 2020-02-14T14:48:46-06:00
 import os
 import time
 import numpy as np
@@ -29,7 +29,7 @@ def train(model, train_data_loader,
 
     totalloss_meter = AverageMeter()
     psnr_meter = AverageMeter()
-    hloss_meter = AverageMeter()
+    # hloss_meter = AverageMeter()
 
     # switch to train mode
     model.train()
@@ -45,11 +45,11 @@ def train(model, train_data_loader,
         # Compute output
         predictions, encoded = model(batch_data)
 
-        hloss = HLoss(encoded)
+        # hloss = criterion(batch_data, encoded)
 
 
         # Calculate loss
-        total_loss = criterion(batch_data, predictions)# + 2.5e-3 * hloss
+        total_loss = criterion(batch_data, predictions)# + hloss
         #, L1E, KLD, CCE, ACC1, ACC2
 
         total_loss.backward()
@@ -65,11 +65,11 @@ def train(model, train_data_loader,
         # Metrics
         totalloss_meter.update(total_loss.data.cpu().item(), batch_data.shape[0])
         psnr_meter.update(psnr_.data.cpu().item(), batch_data.shape[0])
-        hloss_meter.update(hloss.data.cpu().item(), batch_data.shape[0])
+        # hloss_meter.update(hloss.data.cpu().item(), batch_data.shape[0])
         # Update log progress bar
         log_ = ' loss:'+ '{0:4.4f}'.format(totalloss_meter.avg)
         log_ += ' psnr:'+ '{0:4.4f}'.format(psnr_meter.avg)
-        log_ += ' hloss:'+ '{0:4.4f}'.format(hloss_meter.avg)
+        # log_ += ' hloss:'+ '{0:4.4f}'.format(hloss_meter.avg)
         log_ += ' batch time:'+ '{0:2.3f}'.format(toc)
         bar.update(item_id = log_)
 

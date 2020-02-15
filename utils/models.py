@@ -1,7 +1,7 @@
 # @Author: Narsi Reddy <narsi>
 # @Date:   2019-12-18T20:16:34-06:00
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-11T23:04:46-06:00
+# @Last modified time: 2020-02-14T19:03:59-06:00
 import torch
 import numpy as np
 torch.manual_seed(29)
@@ -388,22 +388,30 @@ class QuantACTShuffleV7(nn.Module):
         super(QuantACTShuffleV7, self).__init__()
 
         self.E = nn.Sequential(
-            HaarDWT(3),HaarDWT(12),HaarDWT(48),
-            BLOCK_3x3(in_ch = 192, out_ch = 384, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 6, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 6, res_scale = 1.0),
-            nn.Conv2d(384, 3, 1),
+            HaarDWT(3),HaarDWT(12),
+            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(96, 3, 1),
+            HaarDWT(3),HaarDWT(12),
+            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(96, 3, 1),
             QuantCLIP(8)
             )
 
         self.D = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 384, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 384, out_ch = 384, ker = 3, squeeze = 4, res_scale = 1.0),
-            nn.Conv2d(384, 192, 1),
-            HaarIDWT(48),HaarIDWT(12),HaarIDWT(3),
+            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(192, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
+            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(192, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
             nn.ReLU(),
             )
 
@@ -421,9 +429,72 @@ class QuantACTShuffleV7(nn.Module):
         return x
 
     def forward(self, x):
-        xe = self.encode(x)
-        x = self.decode(xe)
+        # if self.training:
+        x = self.encode(x)
+        x = self.decode(x)
         if self.training:
-            return x, xe
+            return x, x
+        else:
+            return x
+
+class QuantACTShuffleV8(nn.Module):
+    def __init__(
+        self,
+        ):
+        super(QuantACTShuffleV8, self).__init__()
+
+        self.E = nn.Sequential(
+            HaarDWT(3),HaarDWT(12),
+            BLOCK_3x3(in_ch = 48, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(96, 3, 1),
+            QuantCLIP(8)
+            )
+
+        self.D = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(96, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
+            nn.ReLU(),
+            )
+
+        self.U = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 64, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(64, 12, 1),
+            HaarIDWT(3),
+            nn.ReLU(),
+            )
+
+        self.S = nn.Sequential(nn.ReflectionPad2d(1),
+                               nn.AvgPool2d(3, stride=1, padding=0))
+
+    def encode(self, x):
+        if not self.training:
+            x = F.interpolate(x, scale_factor=0.25, mode='bilinear')
+        x = self.E(x)
+        return x
+
+    def decode(self, x):
+        x = self.D(x)
+        if not self.training:
+            x = self.U(x)
+            x = self.U(x)
+            # x = self.S(x)
+        return x
+
+    def forward(self, x):
+        # if self.training:
+        x = F.interpolate(x, scale_factor=0.5, mode='bilinear')
+        x = self.encode(x)
+        xd = self.decode(x)
+        x = self.U(xd)
+        if self.training:
+            return x, F.interpolate(xd, scale_factor=2, mode='bilinear')
         else:
             return x

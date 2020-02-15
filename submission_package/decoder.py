@@ -2,8 +2,8 @@
 # @Author: Narsi Reddy <cibitlab>
 # @Date:   2020-02-11T18:03:26-06:00
 # @Email:  sdhy7@mail.umkc.edu
-# @Last modified by:   cibitlab
-# @Last modified time: 2020-02-11T18:17:52-06:00
+# @Last modified by:   cibitaw1
+# @Last modified time: 2020-02-14T14:24:14-06:00
 
 import os
 import numpy as np
@@ -21,19 +21,19 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from glob import glob
 from PIL.PngImagePlugin import PngImageFile, PngInfo
 
+
 def decompress(EnIn, model):
 
-    s_ = 512
-    d_ = 128
+    c_ = 16
 
     w, h = int(EnIn.text['w']), int(EnIn.text['h'])
 
 
-    I = np.zeros((3,int(s_*np.ceil(h/s_)),int(s_*np.ceil(w/s_))),
+    I = np.zeros((3,int(c_*np.ceil(h/c_)),int(c_*np.ceil(w/c_))),
                  dtype = np.float32)
 
-    new_en_w = I.shape[2]//4
-    new_en_h = I.shape[1]//4
+    new_en_w = I.shape[2]//c_
+    new_en_h = I.shape[1]//c_
 
 
     EnIn = np.uint8(EnIn).copy()
@@ -42,14 +42,12 @@ def decompress(EnIn, model):
                          (0, 0)), mode = "reflect")
 
 
-    EnIn = np.float32(EnIn)
+    EnIn = np.float32(EnIn)/255.0
     EnIn = np.transpose(EnIn, [2, 0, 1])
-    for i in range(0, EnIn.shape[1], d_):
-        for j in range(0, EnIn.shape[2], d_):
-            It = torch.from_numpy(np.expand_dims(EnIn[:, i:i+d_, j:j+d_], 0))/255.0
-            It = It * 2.0 - 1.0
-            Xe = model(It.cuda())
-            I[:, int(i*4):int(i*4)+s_, int(j*4):int(j*4)+s_] = np.clip(Xe.data.squeeze().cpu().numpy(), 0, 1)
+    EnIn = torch.from_numpy(np.expand_dims(EnIn, 0))
+    EnIn = EnIn * 2.0 - 1.0
+    I = model(EnIn.cuda())
+    I = np.clip(I.data.squeeze().cpu().numpy(), 0, 1)
 
     I = np.uint8(255 * I.transpose([1, 2, 0]))
 
@@ -186,27 +184,6 @@ class RES_3x3_BLOCK1(nn.Module):
         return out
 
 """
-Enocder:
-"""
-class Encoder(nn.Module):
-    def __init__(
-        self,
-        ):
-        super(Encoder, self).__init__()
-
-        self.E = nn.Sequential(
-            HaarDWT(3),HaarDWT(12),
-            BLOCK_3x3(in_ch = 48, out_ch = 128, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 128, out_ch = 128, ker = 3, squeeze = 4, res_scale = 1.0),
-            nn.Conv2d(128, 3, 1),
-            QuantCLIP(8)
-            )
-
-    def forward(self, x):
-        x = self.E(x)
-        return x
-"""
 Deocder:
 """
 class Decoder(nn.Module):
@@ -216,22 +193,29 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         self.D = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 256, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 256, out_ch = 256, ker = 3, squeeze = 4, res_scale = 1.0),
-            nn.Conv2d(256, 48, 1),
+            BLOCK_3x3(in_ch = 3, out_ch = 96, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(96, 48, 1),
             HaarIDWT(12),HaarIDWT(3),
             nn.ReLU(),
             )
 
-        self.S = nn.Sequential(nn.ReflectionPad2d(1),
-                               nn.AvgPool2d(3, stride=1, padding=0))
+        self.U = nn.Sequential(
+            BLOCK_3x3(in_ch = 3, out_ch = 64, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
+            nn.Conv2d(64, 12, 1),
+            HaarIDWT(3),
+            nn.ReLU(),
+            )
 
     def forward(self, x):
         x = self.D(x)
-        x = self.S(x)
+        if not self.training:
+            x = self.U(x)
+            x = self.U(x)
         return x
 
 if __name__ == '__main__':
@@ -242,6 +226,7 @@ if __name__ == '__main__':
     checkpoint = torch.load(weights_fldr)
     de_model.load_state_dict(checkpoint, strict = False)
     de_model.cuda()
+    de_model.eval()
     print('.')
 
 
