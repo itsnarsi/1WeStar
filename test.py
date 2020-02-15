@@ -2,9 +2,10 @@
 # @Date:   2020-02-14T19:34:50-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   narsi
-# @Last modified time: 2020-02-14T20:04:52-06:00
+# @Last modified time: 2020-02-14T20:15:06-06:00
 import numpy as np
 from matplotlib import pyplot as plt
+
 
 def compress(I_org, model):
 
@@ -25,8 +26,8 @@ def compress(I_org, model):
     com_h = new_h // c_
 
     I = np.uint8(I_org).copy()
-    I = np.pad(I, ((0, int(new_h) - h)),
-                   (0, int(new_w) - w)),
+    I = np.pad(I, ((0, int(new_h - h)),
+                   (0, int(new_w - w)),
                    (0, 0)), mode = "reflect")
     I = Image.fromarray(I)
 
@@ -34,26 +35,28 @@ def compress(I_org, model):
     I1 = np.float32(I)/255.0
     I1 = np.transpose(I1, [2, 0, 1])
 
-    Enout = np.zeros((3, com_w, com_h))
-    Enout_w = np.zeros((3, com_w, com_h))
-    for i in list(np.arange(0, new_w, e_)):
-        for j in list(np.arange(0, new_h, e_)):
+    Enout = np.zeros((3, com_h, com_w))
+    Enout_w = np.zeros((3, com_h, com_w))
+    for i in list(np.arange(0, new_h, e_)):
+        for j in list(np.arange(0, new_w, e_)):
             if i == 0:
                 x1 = int(i)
-                x2 = int((i + e_) + pad_*2*c_)
+                x2 = int((i + e_) + (pad_*2*c_))
             else:
-                x1 = int(i - pad_*c_)
-                x2 = int((i + e_) + pad_*c_)
+                x1 = int(i - (pad_*c_))
+                x2 = int((i + e_) + (pad_*c_))
 
             if j == 0:
                 y1 = int(j)
-                y2 = int((j + e_) + pad_*2*c_)
+                y2 = int((j + e_) + (pad_*2*c_))
             else:
-                y1 = int(j - pad_)
-                y2 = int((j + e_) + pad_*c_)
+                y1 = int(j - (pad_*c_))
+                y2 = int((j + e_) + (pad_*c_))
             It = torch.from_numpy(np.expand_dims(I1[:, x1:x2, y1:y2], 0))
             Xe = model(It.cuda())
             Xe = (Xe + 1.0)/2.0
+            print(Xe.size())
+            print([ x1//c_,x2//c_, y1//c_, y2//c_])
             Enout[:, x1//c_:x2//c_, y1//c_:y2//c_] += Xe.data.squeeze().cpu().numpy()
             Enout_w[:, x1//c_:x2//c_, y1//c_:y2//c_] += 1.0
 
@@ -95,8 +98,8 @@ def decompress(EnIn, model):
 
     EnIn = np.float32(EnIn)/255.0
     EnIn = np.transpose(EnIn, [2, 0, 1])
-    for i in list(np.arange(0, com_w, d_)):
-        for j in list(np.arange(0, com_h, d_)):
+    for i in list(np.arange(0, com_h, d_)):
+        for j in list(np.arange(0, com_w, d_)):
 
             if i == 0:
                 x1 = int(i)
