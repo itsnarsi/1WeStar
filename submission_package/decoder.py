@@ -3,7 +3,7 @@
 # @Date:   2020-02-11T18:03:26-06:00
 # @Email:  sdhy7@mail.umkc.edu
 # @Last modified by:   cibitaw1
-# @Last modified time: 2020-02-14T14:24:14-06:00
+# @Last modified time: 2020-02-14T20:42:55-06:00
 
 import os
 import numpy as np
@@ -21,39 +21,66 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 from glob import glob
 from PIL.PngImagePlugin import PngImageFile, PngInfo
 
-
 def decompress(EnIn, model):
 
+    e_ = 512
     c_ = 16
+    d_ = e_ // c_
+    pad_ = 4
 
     w, h = int(EnIn.text['w']), int(EnIn.text['h'])
 
+    comp_w_new = np.ceil(w/c_)
+    comp_h_new = np.ceil(h/c_)
 
-    I = np.zeros((3,int(c_*np.ceil(h/c_)),int(c_*np.ceil(w/c_))),
-                 dtype = np.float32)
+    new_w = int(e_ * np.ceil(w/e_))
+    new_h = int(e_ * np.ceil(h/e_))
 
-    new_en_w = I.shape[2]//c_
-    new_en_h = I.shape[1]//c_
+    com_w = new_w // c_
+    com_h = new_h // c_
 
+
+    Iout = np.zeros((3,new_h,new_w), dtype = np.float32)
+    Iout_w = np.zeros((3,new_h,new_w), dtype = np.float32)
 
     EnIn = np.uint8(EnIn).copy()
-    EnIn = np.pad(EnIn, ((0, int(new_en_h - EnIn.shape[0])),
-                         (0, int(new_en_w - EnIn.shape[1])),
+    EnIn = np.pad(EnIn, ((0, int(com_h - EnIn.shape[0])),
+                         (0, int(com_w - EnIn.shape[1])),
                          (0, 0)), mode = "reflect")
 
 
     EnIn = np.float32(EnIn)/255.0
     EnIn = np.transpose(EnIn, [2, 0, 1])
-    EnIn = torch.from_numpy(np.expand_dims(EnIn, 0))
-    EnIn = EnIn * 2.0 - 1.0
-    I = model(EnIn.cuda())
-    I = np.clip(I.data.squeeze().cpu().numpy(), 0, 1)
+    for i in list(np.arange(0, com_h, d_)):
+        for j in list(np.arange(0, com_w, d_)):
 
-    I = np.uint8(255 * I.transpose([1, 2, 0]))
+            if i == 0:
+                x1 = int(i)
+                x2 = int((i + d_) + pad_*2)
+            else:
+                x1 = int(i - pad_)
+                x2 = int((i + d_) + pad_)
 
-    I = Image.fromarray(I).crop((0, 0, w, h))
+            if j == 0:
+                y1 = int(j)
+                y2 = int((j + d_) + pad_*2)
+            else:
+                y1 = int(j - pad_)
+                y2 = int((j + d_) + pad_)
 
-    return I
+            It = torch.from_numpy(np.expand_dims(EnIn[:, x1:x2, y1:y2], 0))
+            It = It * 2.0 - 1.0
+            Xe = model(It.cuda()).data.squeeze().cpu()
+
+            Iout[:, x1*c_:x2*c_, y1*c_:y2*c_] += np.clip(Xe.numpy(), 0, 1)
+            Iout_w[:, x1*c_:x2*c_, y1*c_:y2*c_] += 1.0
+
+    Iout = Iout/Iout_w
+
+    Iout = np.uint8(255 * Iout.transpose([1, 2, 0]))
+    Iout = Image.fromarray(Iout).crop((0, 0, w, h))
+
+    return Iout
 
 class quantclip(torch.autograd.Function):
     """
@@ -193,29 +220,25 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         self.D = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 96, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 96, out_ch = 96, ker = 3, squeeze = 2, res_scale = 1.0),
-            nn.Conv2d(96, 48, 1),
+            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(192, 48, 1),
+            HaarIDWT(12),HaarIDWT(3),
+            BLOCK_3x3(in_ch = 3, out_ch = 192, ker = 3, stride = 1),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            RES_3x3_BLOCK1(in_ch = 192, out_ch = 192, ker = 3, squeeze = 4, res_scale = 1.0),
+            nn.Conv2d(192, 48, 1),
             HaarIDWT(12),HaarIDWT(3),
             nn.ReLU(),
             )
 
-        self.U = nn.Sequential(
-            BLOCK_3x3(in_ch = 3, out_ch = 64, ker = 3, stride = 1),
-            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
-            RES_3x3_BLOCK1(in_ch = 64, out_ch = 64, ker = 3, squeeze = 2, res_scale = 1.0),
-            nn.Conv2d(64, 12, 1),
-            HaarIDWT(3),
-            nn.ReLU(),
-            )
+        self.S = nn.Sequential(nn.ReflectionPad2d(1),
+                               nn.AvgPool2d(3, stride=1, padding=0))
 
     def forward(self, x):
         x = self.D(x)
-        if not self.training:
-            x = self.U(x)
-            x = self.U(x)
+        x = self.S(x)
         return x
 
 if __name__ == '__main__':
@@ -230,12 +253,14 @@ if __name__ == '__main__':
     print('.')
 
 
-    src_fldr = "/media/cibitaw1/DATA/super_rez/comp_test/decompressed"
-    #"./images"
+    src_fldr = "./images"
 
     imgs = glob(src_fldr + os.sep + "*.png")
 
     for img in imgs:
-        I = Image.open(img)
-        Iout = decompress(I, de_model)
+        print("==============================")
+        print(img)
+        print("==============================")
+        Iin = Image.open(img)
+        Iout = decompress(Iin, de_model)
         Iout.save(img)
